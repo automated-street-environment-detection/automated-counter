@@ -1,8 +1,10 @@
 # Main Driver file. All used components will be imported from the components folder
 import cv2
 
+VIDEO_PATH = "path"
+
 def main():
-    cap = cv2.VideoCapture("pathToVideo")
+    cap = cv2.VideoCapture(VIDEO_PATH)
 
     while (cap.isOpened()):
         ret, frame = cap.read()

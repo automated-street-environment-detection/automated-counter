@@ -24,3 +24,8 @@
         - Enter `git pull`
     - Attempt to merge
         - Enter `git merge desiredbranch -m "Descriptive Message"`
+
+### How to run video
+1. Copy the file path of the video
+2. Open src/main.py
+3. Change the VIDEO_PATH variable value with the path that was copied
