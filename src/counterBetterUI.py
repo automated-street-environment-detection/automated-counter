@@ -1,14 +1,20 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
 import cv2
+import time
 from PIL import Image, ImageTk
-import datetime
+from exportToCSV import export_to_csv
+from exportToExcel import export_to_excel
+from printResults import print_results
 
 # Initialize vehicle counts
 vehicle_counts = {"moto": 0, "car": 0, "bike": 0, "ebike": 0, "bus": 0, "ped": 0, "truck": 0, "other": 0}
-vehicle_loc_counts = {"Lane_moto": 0, "Lane_car": 0, "Lane_bike": 0, "Lane_ebike": 0, "Lane_bus": 0, "Lane_ped": 0, "Lane_truck": 0, "Lane_other": 0,
-                      "Lim_ww_moto": 0, "Lim_ww_car": 0, "Lim_ww_bike": 0, "Lim_ww_ebike": 0, "Lim_ww_bus": 0, "Lim_ww_ped": 0, "Lim_ww_truck": 0, "Lim_ww_other": 0,
-                      "Sidewalk_moto": 0, "Sidewalk_car": 0, "Sidewalk_bike": 0, "Sidewalk_ebike": 0, "Sidewalk_bus": 0, "Sidewalk_ped": 0, "Sidewalk_truck": 0, "Sidewalk_other": 0}
+vehicle_loc_counts = {"Lane_moto": 0, "Lane_car": 0, "Lane_bike": 0, "Lane_ebike": 0, "Lane_bus": 0, "Lane_ped": 0,
+                      "Lane_truck": 0, "Lane_other": 0,
+                      "Lim_ww_moto": 0, "Lim_ww_car": 0, "Lim_ww_bike": 0, "Lim_ww_ebike": 0, "Lim_ww_bus": 0,
+                      "Lim_ww_ped": 0, "Lim_ww_truck": 0, "Lim_ww_other": 0,
+                      "Sidewalk_moto": 0, "Sidewalk_car": 0, "Sidewalk_bike": 0, "Sidewalk_ebike": 0, "Sidewalk_bus": 0,
+                      "Sidewalk_ped": 0, "Sidewalk_truck": 0, "Sidewalk_other": 0}
 vehicle_timestamps = {key: [] for key in vehicle_loc_counts}
 
 # Option to include milliseconds in timestamps
@@ -20,7 +26,7 @@ is_paused = False
 # Create the main window
 root = tk.Tk()
 root.title("Vehicle Counter")
-root.geometry("1200x800")  # Set the window size
+root.geometry("1500x1000")  # Set the window size
 
 # Create a style for the app
 style = ttk.Style()
@@ -65,6 +71,7 @@ for vehicle in sorted(vehicle_counts.keys()):
             timestamp = video_capture.get(cv2.CAP_PROP_POS_MSEC) / 1000  # Convert to seconds
             vehicle_timestamps[key].append(timestamp)
 
+
     def decrement(vehicle=vehicle, label=count_label):
         selected_location = selected_location_type.get()
         if not selected_location:
@@ -79,6 +86,7 @@ for vehicle in sorted(vehicle_counts.keys()):
                 vehicle_timestamps[key].pop()
         else:
             print("No vehicles to decrement.")
+
 
     increment_button = ttk.Button(vehicle_type_frame, text="+", command=increment)
     increment_button.grid(row=row, column=2, padx=5, pady=5)
@@ -96,7 +104,8 @@ location_types = ["Lane", "Lim_ww", "Sidewalk"]
 selected_location_type = tk.StringVar()
 
 for i, location_type in enumerate(location_types):
-    radio_button = ttk.Radiobutton(location_type_frame, text=location_type.capitalize(), variable=selected_location_type, value=location_type)
+    radio_button = ttk.Radiobutton(location_type_frame, text=location_type.capitalize(),
+                                   variable=selected_location_type, value=location_type)
     radio_button.grid(row=i // 3, column=i % 3, padx=5, pady=5, sticky="w")
 
 # Create a frame for buttons
@@ -111,9 +120,6 @@ def open_video():
     if file_path:
         video_capture = cv2.VideoCapture(file_path)
         update_video_frame()
-
-open_button = ttk.Button(button_frame, text="Open Video", command=open_video)
-open_button.pack(side=tk.LEFT, padx=5)
 
 # Function to update the video frame
 def update_video_frame():
@@ -137,30 +143,36 @@ def toggle_pause():
     if not is_paused:
         update_video_frame()
 
-# Button to pause/resume video
-pause_button = ttk.Button(button_frame, text="Pause/Resume", command=toggle_pause)
-pause_button.pack(side=tk.LEFT, padx=5)
 
 # Function to print the results
-def print_results():
-    print("Total Vehicle Counts:")
-    for vehicle, count in vehicle_loc_counts.items():
-        print(f"{vehicle.capitalize()}: {count}")
+def print_button_clicked():
+    print_results(vehicle_loc_counts, vehicle_timestamps, include_milliseconds)
 
-    print("\nTimestamps:")
-    for vehicle, timestamps in vehicle_timestamps.items():
-        print(f"{vehicle.capitalize()}:")
-        for timestamp in timestamps:
-            if include_milliseconds:
-                time_parts = str(datetime.timedelta(seconds=timestamp)).split(':')[1:]
-                time_str = ":".join(time_parts)
-            else:
-                time_parts = str(datetime.timedelta(seconds=int(timestamp))).split(':')[1:]
-                time_str = ":".join(time_parts)
-            print(f"  {time_str}")
 
-results_button = ttk.Button(button_frame, text="Print Results", command=print_results)
-results_button.pack(side=tk.LEFT, padx=5)
+def export_csv_button_clicked():
+    export_to_csv(vehicle_loc_counts, vehicle_timestamps, include_milliseconds)
+
+
+def export_excel_button_clicked():
+    export_to_excel(vehicle_loc_counts, vehicle_timestamps, include_milliseconds)
+
+
+# Row 1
+open_button = ttk.Button(button_frame, text="Open Video", command=open_video)
+open_button.grid(row=0, column=0, padx=5, pady=5)
+
+pause_button = ttk.Button(button_frame, text="Pause/Resume", command=toggle_pause)
+pause_button.grid(row=0, column=1, padx=5, pady=5)
+
+results_button = ttk.Button(button_frame, text="Print Results", command=print_button_clicked)
+results_button.grid(row=0, column=2, padx=5, pady=5)
+
+# Row 2
+exportCSV_button = ttk.Button(button_frame, text="Export to CSV", command=export_csv_button_clicked)
+exportCSV_button.grid(row=1, column=0, padx=5, pady=5)
+
+exportExcel_button = ttk.Button(button_frame, text="Export to Excel", command=export_excel_button_clicked)
+exportExcel_button.grid(row=1, column=1, padx=5, pady=5)
 
 # Start the main event loop
 root.mainloop()
