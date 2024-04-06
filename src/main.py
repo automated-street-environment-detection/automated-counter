@@ -8,7 +8,7 @@ from exportToExcel import export_to_excel
 from printResults import print_results
 
 # Initialize vehicle counts
-vehicle_counts = {"moto": 0, "car": 0, "bike": 0, "ebike": 0, "bus": 0, "ped": 0, "truck": 0, "other": 0}
+vehicle_counts = {"moto": 0, "car": 0, "bike": 0, "ebike": 0, "bus": 0, "ped": 0, "truck": 0, "minibus/van": 0, "other": 0}
 
 # Initialize vehicle location counts
 vehicle_loc_counts = {f"{location}_{vehicle}": 0 for location in ["Lane", "Lim_ww", "Sidewalk"] for vehicle in vehicle_counts.keys()}
