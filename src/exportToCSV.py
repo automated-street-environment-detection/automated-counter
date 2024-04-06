@@ -3,7 +3,7 @@ import datetime
 from tkinter import filedialog
 
 
-def export_to_csv(vehicle_loc_counts, vehicle_timestamps, include_milliseconds):
+def export_to_csv(vehicle_loc_counts, license_color_counts, vehicle_timestamps, include_milliseconds):
     file_path = filedialog.asksaveasfilename(defaultextension=".csv")
     if file_path:
         with open(file_path, "w", newline="") as csvfile:
@@ -13,6 +13,14 @@ def export_to_csv(vehicle_loc_counts, vehicle_timestamps, include_milliseconds):
             writer.writerow(["Vehicle", "Count"])
             for vehicle, count in sorted(vehicle_loc_counts.items()):
                 writer.writerow([vehicle.capitalize(), count])
+
+            # Add an empty row for separation
+            writer.writerow([])
+
+            # Write license_color_counts to the first sheet
+            writer.writerow(["Color", "Count"])
+            for color, count in sorted(license_color_counts.items()):
+                writer.writerow([color.capitalize(), count])
 
             # Add an empty row for separation
             writer.writerow([])

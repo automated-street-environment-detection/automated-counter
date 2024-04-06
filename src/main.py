@@ -208,15 +208,15 @@ def toggle_pause():
 
 # Function to print the results
 def print_button_clicked():
-    print_results(vehicle_loc_counts, vehicle_timestamps, license_color_counts, include_milliseconds)
+    print_results(vehicle_loc_counts, license_color_counts, vehicle_timestamps, include_milliseconds)
 
 
 def export_csv_button_clicked():
-    export_to_csv(vehicle_loc_counts, vehicle_timestamps, include_milliseconds)
+    export_to_csv(vehicle_loc_counts, license_color_counts, vehicle_timestamps, include_milliseconds)
 
 
 def export_excel_button_clicked():
-    export_to_excel(vehicle_loc_counts, vehicle_timestamps, include_milliseconds)
+    export_to_excel(vehicle_loc_counts, license_color_counts, vehicle_timestamps, include_milliseconds)
 
 
 # Row 1
