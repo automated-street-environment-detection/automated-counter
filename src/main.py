@@ -1,21 +1,23 @@
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
 import cv2
-import time
 from PIL import Image, ImageTk
+from vidstab import VidStab
 from exportToCSV import export_to_csv
 from exportToExcel import export_to_excel
 from printResults import print_results
 
 # Initialize vehicle counts
 vehicle_counts = {"moto": 0, "car": 0, "bike": 0, "ebike": 0, "bus": 0, "ped": 0, "truck": 0, "other": 0}
-vehicle_loc_counts = {"Lane_moto": 0, "Lane_car": 0, "Lane_bike": 0, "Lane_ebike": 0, "Lane_bus": 0, "Lane_ped": 0,
-                      "Lane_truck": 0, "Lane_other": 0,
-                      "Lim_ww_moto": 0, "Lim_ww_car": 0, "Lim_ww_bike": 0, "Lim_ww_ebike": 0, "Lim_ww_bus": 0,
-                      "Lim_ww_ped": 0, "Lim_ww_truck": 0, "Lim_ww_other": 0,
-                      "Sidewalk_moto": 0, "Sidewalk_car": 0, "Sidewalk_bike": 0, "Sidewalk_ebike": 0, "Sidewalk_bus": 0,
-                      "Sidewalk_ped": 0, "Sidewalk_truck": 0, "Sidewalk_other": 0}
+
+# Initialize vehicle location counts
+vehicle_loc_counts = {f"{location}_{vehicle}": 0 for location in ["Lane", "Lim_ww", "Sidewalk"] for vehicle in vehicle_counts.keys()}
+
+# Initialize vehicle timestamps
 vehicle_timestamps = {key: [] for key in vehicle_loc_counts}
+
+# Initialize license color counts
+license_color_counts = {f"{color}_{vehicle}": 0 for color in ["yellow", "white"] for vehicle in vehicle_counts.keys()}
 
 # Option to include milliseconds in timestamps
 include_milliseconds = False
@@ -58,8 +60,10 @@ for vehicle in sorted(vehicle_counts.keys()):
     count_label = ttk.Label(vehicle_type_frame, text="0", font=("Arial", 14))
     count_label.grid(row=row, column=1, sticky="w", padx=5, pady=5)
 
+
     def increment(vehicle=vehicle, label=count_label):
         selected_location = selected_location_type.get()
+        selected_color = selected_license_color.get()
         if not selected_location:
             print("Please select a location type first.")
             return
@@ -70,13 +74,30 @@ for vehicle in sorted(vehicle_counts.keys()):
         if video_capture:
             timestamp = video_capture.get(cv2.CAP_PROP_POS_MSEC) / 1000  # Convert to seconds
             vehicle_timestamps[key].append(timestamp)
+        if selected_color:  # Only update licenseColor_counts if a color is selected
+            color_key = f"{selected_color}_{vehicle}"
+            license_color_counts[color_key] += 1
+            selected_license_color.set("")  # Uncheck the checkbox after incrementing
 
 
     def decrement(vehicle=vehicle, label=count_label):
         selected_location = selected_location_type.get()
+        selected_color = selected_license_color.get()
         if not selected_location:
-            print("Please select a location type first.")
+            messagebox.showwarning("Warning", "Please select a location type first.")
             return
+
+        # Decrement license_color_counts
+        if selected_color:  # Only update license_color_counts if a color is selected
+            color_key = f"{selected_color}_{vehicle}"
+            if license_color_counts[color_key] > 0:
+                license_color_counts[color_key] -= 1
+                selected_license_color.set("")  # Uncheck the checkbox after incrementing
+            else:
+                messagebox.showerror("Error", "No vehicles to decrement for license color + vehicle type combo.")
+                return
+
+        # Decrement vehicle_loc_counts
         key = f"{selected_location}_{vehicle}"
         if vehicle_counts[vehicle] > 0 and vehicle_loc_counts[key] > 0:
             vehicle_counts[vehicle] -= 1
@@ -85,7 +106,7 @@ for vehicle in sorted(vehicle_counts.keys()):
             if video_capture and vehicle_timestamps[key]:
                 vehicle_timestamps[key].pop()
         else:
-            print("No vehicles to decrement.")
+            messagebox.showerror("Error", "No vehicles to decrement for vehicle type + location combo.")
 
 
     increment_button = ttk.Button(vehicle_type_frame, text="+", command=increment)
@@ -95,6 +116,10 @@ for vehicle in sorted(vehicle_counts.keys()):
     decrement_button.grid(row=row, column=3, padx=5, pady=5)
 
     row += 1
+
+#####################################################################################
+## Location Type UI Elements
+#####################################################################################
 
 # Create a frame for location types
 location_type_frame = ttk.LabelFrame(controls_frame, text="Location Types", padding=10)
@@ -107,6 +132,27 @@ for i, location_type in enumerate(location_types):
     radio_button = ttk.Radiobutton(location_type_frame, text=location_type.capitalize(),
                                    variable=selected_location_type, value=location_type)
     radio_button.grid(row=i // 3, column=i % 3, padx=5, pady=5, sticky="w")
+#####################################################################################
+
+#####################################################################################
+## License Color UI Elements
+#####################################################################################
+
+# Create a frame for license color selection
+license_color_frame = ttk.LabelFrame(controls_frame, text="License Colors", padding=10)
+license_color_frame.pack(fill=tk.BOTH, expand=True)
+
+license_colors = ["yellow", "white"]
+selected_license_color = tk.StringVar()
+
+for i, license_color in enumerate(license_colors):
+    # check_button = ttk.Checkbutton(license_color_frame, text=license_color.capitalize(),
+    #                                variable=selected_license_color, onvalue=license_color, offvalue="")
+    # check_button.grid(row=i // 2, column=i % 2, padx=5, pady=5, sticky="w")
+    radio_button = ttk.Radiobutton(license_color_frame, text=license_color.capitalize(),
+                                   variable=selected_license_color, value=license_color)
+    radio_button.grid(row=i // 3, column=i % 3, padx=5, pady=5, sticky="w")
+#####################################################################################
 
 # Create a frame for buttons
 button_frame = ttk.Frame(controls_frame)
@@ -114,11 +160,26 @@ button_frame.pack(fill=tk.BOTH, pady=10)
 
 # Function to open a video file
 video_capture = None
+
+
 def open_video():
     global video_capture
     file_path = filedialog.askopenfilename()
     if file_path:
-        video_capture = cv2.VideoCapture(file_path)
+        # Ask the user if they want to stabilize the video
+        stabilize_video = messagebox.askyesno("Stabilize Video", "Do you want to stabilize the video?")
+        if stabilize_video:
+            # Create a VidStab object
+            stabilizer = VidStab()
+
+            # Stabilize the video
+            stabilizer.stabilize(input_path=file_path, output_path='stabilized_output.avi')
+
+            # Open the stabilized video
+            video_capture = cv2.VideoCapture('stabilized_output.avi')
+        else:
+            # Open the video without stabilizing
+            video_capture = cv2.VideoCapture(file_path)
         update_video_frame()
 
 # Function to update the video frame
@@ -136,6 +197,7 @@ def update_video_frame():
             video_label.image = photo  # Keep a reference to prevent garbage collection
             video_label.after(40, update_video_frame)  # Update every 40 ms (0.5x speed)
 
+
 # Function to toggle pause state
 def toggle_pause():
     global is_paused
@@ -146,7 +208,7 @@ def toggle_pause():
 
 # Function to print the results
 def print_button_clicked():
-    print_results(vehicle_loc_counts, vehicle_timestamps, include_milliseconds)
+    print_results(vehicle_loc_counts, vehicle_timestamps, license_color_counts, include_milliseconds)
 
 
 def export_csv_button_clicked():
