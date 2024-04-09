@@ -6,6 +6,8 @@ from vidstab import VidStab
 from exportToCSV import export_to_csv
 from exportToExcel import export_to_excel
 from printResults import print_results
+from saveProgress import exportToJson
+from saveProgress import load_save_data
 
 # Initialize vehicle counts
 vehicle_counts = {"moto": 0, "car": 0, "bike": 0, "ebike": 0, "bus": 0, "ped": 0, "truck": 0, "minibus/van": 0, "other": 0}
@@ -217,7 +219,14 @@ def export_csv_button_clicked():
 
 def export_excel_button_clicked():
     export_to_excel(vehicle_loc_counts, license_color_counts, vehicle_timestamps, include_milliseconds)
+    
+def save_progress_button_clicked():
+    exportToJson(vehicle_loc_counts, license_color_counts, vehicle_timestamps, vehicle_counts)
 
+def load_progress_button_clicked():
+    load_save_data(vehicle_loc_counts, license_color_counts, vehicle_timestamps, vehicle_counts)
+    for vehicle, count in vehicle_loc_counts.items():
+        print(f'{vehicle} : {count}')
 
 # Row 1
 open_button = ttk.Button(button_frame, text="Open Video", command=open_video)
@@ -235,6 +244,12 @@ exportCSV_button.grid(row=1, column=0, padx=5, pady=5)
 
 exportExcel_button = ttk.Button(button_frame, text="Export to Excel", command=export_excel_button_clicked)
 exportExcel_button.grid(row=1, column=1, padx=5, pady=5)
+
+save_button = ttk.Button(button_frame, text="Save", command=save_progress_button_clicked)
+save_button.grid(row=1, column=2, padx=5, pady=5)
+
+load_button = ttk.Button(button_frame, text="Load", command=load_progress_button_clicked)
+load_button.grid(row=2, column=1, padx=5, pady=5)
 
 # Start the main event loop
 root.mainloop()
