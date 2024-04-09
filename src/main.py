@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import cv2
+import csv
 from PIL import Image, ImageTk
 from vidstab import VidStab
 from exportToCSV import export_to_csv
@@ -162,10 +163,11 @@ button_frame.pack(fill=tk.BOTH, pady=10)
 
 # Function to open a video file
 video_capture = None
+video_filename =""
 
 
 def open_video():
-    global video_capture
+    global video_capture, video_filename
     file_path = filedialog.askopenfilename()
     if file_path:
         # Ask the user if they want to stabilize the video
@@ -182,23 +184,69 @@ def open_video():
         else:
             # Open the video without stabilizing
             video_capture = cv2.VideoCapture(file_path)
+        video_filename = file_path.split("/")[-1]
         update_video_frame()
 
+box_start = (0,0)
+box_end = (0,0)
 # Function to update the video frame
 def update_video_frame():
-    global is_paused
+    global is_paused,box_start,box_end ,video_filename
+    
+    #read box coordinates from csv file
+    video_data=read_csv_file('video_data.csv')
+    if video_filename not in video_data:
+        default_box_coordinates = ((1500, 670), (0, 1000))
+        video_data[video_filename] = default_box_coordinates
+        write_to_csv('video_data.csv', video_data)
+    box_start, box_end = video_data[video_filename]
+
     if is_paused:
         return
     if video_capture:
         ret, frame = video_capture.read()
         if ret:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.rectangle(frame, box_start, box_end, (0, 255, 0), 2) # Draw the box on the frame
             frame = cv2.resize(frame, (960, 540))  # Resize the frame
             photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
             video_label.configure(image=photo)
             video_label.image = photo  # Keep a reference to prevent garbage collection
             video_label.after(40, update_video_frame)  # Update every 40 ms (0.5x speed)
 
+# Function to get the coordinates of the box
+# How to draw a box on the video:
+# click once for the startpoint and click again for the endpoint
+drawing = True
+def get_coordinates(event):
+    global box_start, box_end, drawing
+    if drawing:
+        drawing = False
+        box_start = (event.x * 1920 // 960, event.y * 1080 // 540-220)
+    else:
+        drawing = True
+        box_end = (event.x* 1920 // 960, event.y* 1080 // 540-220)
+    video_data=read_csv_file('video_data.csv')
+    video_data[video_filename] = (box_start, box_end)
+    write_to_csv('video_data.csv', video_data)
+video_label.bind("<ButtonPress-1>", get_coordinates)
+
+
+# Read CSV file to get video filenames and their corresponding box coordinates
+def read_csv_file(csv_filename):
+    video_data = {}
+    with open(csv_filename, 'r', newline='') as csvfile:
+        csvreader = csv.reader(csvfile)
+        for row in csvreader:
+            video_data[row[0]] = (eval(row[1]), eval(row[2]))  
+    return video_data
+
+# Write updated box coordinates to CSV file
+def write_to_csv(csv_filename, video_data):
+    with open(csv_filename, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        for video_filename, (box_start, box_end) in video_data.items():
+            csvwriter.writerow([video_filename, box_start, box_end])
 
 # Function to toggle pause state
 def toggle_pause():
